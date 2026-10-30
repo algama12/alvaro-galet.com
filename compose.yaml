@@ -1,0 +1,14 @@
+# Stack del portfolio. Va en ~/stacks/web y se gestiona desde Dockge.
+# No publica puertos: cloudflared lo alcanza por la red Docker compartida.
+services:
+  portfolio:
+    build: .
+    container_name: portfolio
+    restart: unless-stopped
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true
+    name: homelab_default   # comprueba el nombre con: docker network ls
