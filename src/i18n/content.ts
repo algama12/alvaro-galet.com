@@ -73,16 +73,16 @@ export const t: Record<Lang, Dict> = {
     },
     projects: {
       title: 'Proyectos',
-      lead: 'Productos que he construido de principio a fin, solo.',
+      lead: 'Productos que he construido de principio a fin.',
       visit: 'Visitar',
       code: 'Código',
       items: [
         {
           name: 'Asistente notarial con IA',
           year: '2025',
-          summary: 'Análisis documental y redacción de escrituras para una notaría.',
+          summary: 'Análisis documental y redacción de borradores deescrituras para una notaría.',
           detail:
-            'Herramienta interna que analiza la documentación de cancelaciones hipotecarias y genera el borrador de la escritura notarial. La diseñé y desarrollé en solitario en Gyoza Studio, sobre Google Vertex AI.',
+            'Herramienta interna que analiza la documentación de cancelaciones hipotecarias y genera el borrador de la escritura notarial. La diseñé y desarrollé en Gyoza Studio, sobre Google Vertex AI.',
           stack: ['PHP', 'Google Vertex AI'],
         },
         {
@@ -138,7 +138,7 @@ export const t: Record<Lang, Dict> = {
           title: 'Desarrollador backend',
           org: 'Gyoza Studio',
           text:
-            'Plataformas internas a medida (pagos, CRMs) como partner tecnológico de empresas como Goiko y WeTour. Desarrollo en solitario de una herramienta de IA para una notaría.',
+            'Plataformas internas a medida (pagos, CRMs) como partner tecnológico de empresas como Goiko y WeTour.',
         },
       ],
       studiesTitle: 'Formación',
@@ -153,7 +153,7 @@ export const t: Record<Lang, Dict> = {
       groups: [
         { label: 'Backend', items: 'PHP, Symfony, Laravel, MySQL, PostgreSQL, Redis' },
         { label: 'Frontend', items: 'TypeScript, Next.js, Tailwind' },
-        { label: 'IA', items: 'Vertex AI, OpenRouter, Ollama, agentes y RAG' },
+        { label: 'IA', items: 'Claude Code, Vertex AI, OpenRouter, Ollama, agentes y RAG' },
         { label: 'Infraestructura', items: 'Linux, Docker, Apache, Cloudflare, Tailscale, CI/CD' },
       ],
     },
@@ -197,7 +197,7 @@ export const t: Record<Lang, Dict> = {
     },
     projects: {
       title: 'Projects',
-      lead: 'Products I built end to end, on my own.',
+      lead: 'Products I built end to end.',
       visit: 'Visit',
       code: 'Code',
       items: [
@@ -206,7 +206,7 @@ export const t: Record<Lang, Dict> = {
           year: '2025',
           summary: 'Document analysis and deed drafting for a notary’s office.',
           detail:
-            'Internal tool that analyses mortgage-cancellation paperwork and drafts the notarial deed. I designed and built it alone at Gyoza Studio, on Google Vertex AI.',
+            'Internal tool that analyses mortgage-cancellation paperwork and drafts the notarial deed. I designed and built it at Gyoza Studio, on Google Vertex AI.',
           stack: ['PHP', 'Google Vertex AI'],
         },
         {
@@ -262,7 +262,7 @@ export const t: Record<Lang, Dict> = {
           title: 'Backend developer',
           org: 'Gyoza Studio',
           text:
-            'Custom internal platforms (payments, CRMs) as technology partner for companies such as Goiko and WeTour. Sole developer of an AI tool for a notary’s office.',
+            'Custom internal platforms (payments, CRMs) as technology partner for companies such as Goiko and WeTour.',
         },
       ],
       studiesTitle: 'Education',
@@ -277,7 +277,7 @@ export const t: Record<Lang, Dict> = {
       groups: [
         { label: 'Backend', items: 'PHP, Symfony, Laravel, MySQL, PostgreSQL, Redis' },
         { label: 'Frontend', items: 'TypeScript, Next.js, Tailwind' },
-        { label: 'AI', items: 'Vertex AI, OpenRouter, Ollama, agents and RAG' },
+        { label: 'AI', items: 'Claude Code, Vertex AI, OpenRouter, Ollama, agents and RAG' },
         { label: 'Infrastructure', items: 'Linux, Docker, Apache, Cloudflare, Tailscale, CI/CD' },
       ],
     },
