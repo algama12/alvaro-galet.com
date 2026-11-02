@@ -56,6 +56,39 @@ npm run build      # genera dist/
 
 8. **Monitorización.** Monitor HTTP en Uptime Kuma y otro en UptimeRobot para `https://alvaro-galet.com`.
 
+## Estado en vivo del homelab
+
+El panel de estado lee `/status.json`. En el servidor lo genera `scripts/homelab-status.sh` cada 5 minutos con datos agregados (uptime, temperaturas, nº de servicios, última copia); Caddy sirve solo ese fichero desde `~/stacks/web-status`, montado de solo lectura. En local, `npm run dev` usa el mock `public/status.json` (`"sample": true`), que no entra en la imagen de Docker.
+
+1. **Carpeta del estado** (el log va fuera de ella, en `~/stacks/scripts`):
+   ```bash
+   mkdir -p ~/stacks/web-status ~/stacks/scripts
+   ```
+
+2. **Probar el script a mano** y revisar el JSON:
+   ```bash
+   ~/stacks/web/scripts/homelab-status.sh ~/stacks/web-status/status.json
+   cat ~/stacks/web-status/status.json
+   ```
+
+3. **Cron** (`crontab -e`):
+   ```
+   */5 * * * * /home/alvaro/stacks/web/scripts/homelab-status.sh /home/alvaro/stacks/web-status/status.json >> /home/alvaro/stacks/scripts/homelab-status.log 2>&1
+   ```
+
+4. **Reconstruir el contenedor** para montar el volumen:
+   ```bash
+   cd ~/stacks/web
+   docker compose up -d --build
+   ```
+
+5. **Comprobar** que `/status.json` devuelve el JSON y que nada más de esa carpeta se sirve (las dos últimas deben dar `404`):
+   ```bash
+   docker run --rm --network homelab_default curlimages/curl -s http://portfolio/status.json
+   docker run --rm --network homelab_default curlimages/curl -s -o /dev/null -w '%{http_code}\n' http://portfolio/status.json.tmp
+   docker run --rm --network homelab_default curlimages/curl -s -o /dev/null -w '%{http_code}\n' http://portfolio/status.json/x
+   ```
+
 ## Actualizar la web
 
 En el Mac: edita, haz commit y push. En el homelab:

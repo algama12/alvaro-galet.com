@@ -1,0 +1,10 @@
+{
+  "schema": 2,
+  "sample": true,
+  "generatedAt": "2026-11-01T15:40:00Z",
+  "uptimeSeconds": 1053420,
+  "cpu": { "tempC": 48 },
+  "gpu": { "tempC": 37 },
+  "services": { "running": 14 },
+  "lastBackupAt": "2026-11-01T12:40:00Z"
+}

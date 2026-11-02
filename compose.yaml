@@ -5,6 +5,9 @@ services:
     build: .
     container_name: portfolio
     restart: unless-stopped
+    volumes:
+      # Estado del homelab: lo escribe el cron de scripts/homelab-status.sh; Caddy solo lo lee
+      - /home/alvaro/stacks/web-status:/srv-status:ro
     networks:
       - homelab
 

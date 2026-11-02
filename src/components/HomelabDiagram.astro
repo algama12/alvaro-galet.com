@@ -1,0 +1,191 @@
+---
+import type { HomelabDiagram } from '../i18n/content';
+
+interface Props { diagram: HomelabDiagram }
+const { diagram: d } = Astro.props;
+// Last hop of the public path: its dot lights up after the wire into the server.
+const entryDelay = d.edge.length + 1;
+---
+<figure class="diagram">
+  <!-- Visual only; the figcaption carries the full text alternative. -->
+  <div class="board" data-diagram aria-hidden="true">
+    <p class="tag pub-tag">{d.publicPath}</p>
+    <ol class="row edge">
+      {d.edge.map((n, i) => (
+        <li class="node pub" style={`--i:${i}`}>
+          {i > 0 && <span class="wire x"></span>}
+          <span class="dot"></span>
+          <span class="name">{n.name}</span>
+          <span class="note">{n.note}</span>
+        </li>
+      ))}
+    </ol>
+    <div class="links in">
+      <span class="wire y down pub-wire" style={`--i:${d.edge.length}`}></span>
+    </div>
+
+    <div class="server">
+      <p class="server-head">
+        <span class="name">{d.server.name}</span>
+        <span class="note">{d.server.note}</span>
+      </p>
+      <p class="tag">{d.docker}</p>
+      <ul class="services">
+        {d.services.map((n) => (
+          <li class:list={['node', 'svc', { entry: n.public }]} style={n.public ? `--i:${entryDelay}` : undefined}>
+            <span class="dot"></span>
+            <span class="name">{n.name}</span>
+            <span class="note">{n.note}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="links out">
+      <span class="wire y up dashed"></span>
+      {d.ops.map(() => <span class="wire y down"></span>)}
+    </div>
+    <ul class="row ops">
+      <li class="node private">
+        <span class="dot"></span>
+        <span class="name">{d.admin.name}</span>
+        <span class="note">{d.admin.note}</span>
+      </li>
+      {d.ops.map((n) => (
+        <li class="node">
+          <span class="dot"></span>
+          <span class="name">{n.name}</span>
+          <span class="note">{n.note}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+  <figcaption class="visually-hidden">{d.description}</figcaption>
+</figure>
+
+<style>
+  .diagram { container: diagram / inline-size; margin: 0; min-width: 0; }
+
+  /* Blueprint ground: a faint dot grid behind the nodes */
+  .board {
+    --gap: 1.25rem;
+    --dot-x: calc(.6rem + 3px);
+    height: 100%; display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(.85rem, 2.5cqi, 1.25rem);
+    font-family: var(--mono); font-size: var(--step--2); line-height: 1.35;
+    background-image: radial-gradient(var(--line) 1px, transparent 1px);
+    background-size: 16px 16px; background-position: 8px 8px;
+  }
+
+  .tag {
+    margin-bottom: .4rem; font-size: .6875rem; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--info);
+  }
+  .pub-tag { color: var(--accent); font-weight: 600; }
+
+  .row { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem var(--gap); }
+
+  /* Node: status dot, proper-noun name, short note */
+  .node {
+    position: relative; display: grid; grid-template-columns: 7px minmax(0, 1fr); column-gap: .5rem; align-items: center; align-content: start;
+    padding: .4rem .6rem; border-radius: var(--radius);
+    background: var(--surface); box-shadow: 0 0 0 1px var(--line);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .name { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  .note { grid-column: 2; color: var(--muted); font-size: .75rem; }
+  .pub .dot, .entry .dot { background: var(--accent); }
+  .entry { box-shadow: 0 0 0 1px var(--accent); }
+  /* Private (Tailscale) path: dashed and in the info colour, never the public signal */
+  .private { background: transparent; box-shadow: none; outline: 1px dashed var(--info); outline-offset: -1px; }
+  .private .dot { background: transparent; box-shadow: inset 0 0 0 1px var(--info); }
+
+  /* Wires between nodes; the arrowhead is a rotated corner in the wire colour */
+  .wire { position: relative; display: block; color: var(--line-strong); background: currentColor; }
+  .wire::after {
+    content: ''; position: absolute; width: 5px; height: 5px;
+    border: solid currentColor; border-width: 0 1px 1px 0;
+  }
+  .wire.x {
+    position: absolute; right: 100%; top: 50%; width: var(--gap); height: 1px;
+    transform-origin: left center; --draw: scaleX(0);
+  }
+  .wire.x::after { right: 0; top: -2px; transform: rotate(-45deg); }
+  .wire.y { width: 1px; height: 100%; justify-self: center; transform-origin: top center; --draw: scaleY(0); }
+  .wire.down::after { bottom: 0; left: -2px; transform: rotate(45deg); }
+  .wire.up::after { top: 0; left: -2px; transform: rotate(-135deg); }
+  .wire.dashed { color: var(--info); background: repeating-linear-gradient(to bottom, currentColor 0 3px, transparent 3px 6px); }
+  .pub .wire, .pub-wire { color: var(--accent); }
+
+  .links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--gap); height: 1rem; }
+  .in .wire { grid-column: 3; }
+
+  .server {
+    padding: .55rem .6rem .6rem; border-radius: 8px;
+    border: 1px solid var(--line-strong); background: var(--bg);
+  }
+  .server-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .75rem; margin-bottom: .4rem; }
+  .server-head .name { font-size: var(--step--1); }
+  .server-head .note { font-size: .75rem; }
+  .services { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+
+  /* Narrow frames: one vertical column, wires run down the dot line */
+  @container diagram (max-width: 479px) {
+    .board { --gap: .85rem; }
+    .row { grid-template-columns: minmax(0, 1fr); }
+    .ops { gap: .5rem; }
+    .wire.x {
+      right: auto; top: auto; left: var(--dot-x); bottom: 100%;
+      width: 1px; height: var(--gap); transform-origin: top center; --draw: scaleY(0);
+    }
+    .wire.x::after { right: auto; top: auto; bottom: 0; left: -2px; transform: rotate(45deg); }
+    .links { grid-template-columns: minmax(0, 1fr); padding-left: var(--dot-x); height: 1rem; }
+    .links .wire { grid-column: auto; justify-self: start; }
+    /* The three side channels are listed below one plain wire */
+    .out .wire:nth-child(n + 2) { display: none; }
+    .out .wire { background: currentColor; }
+    .out .wire::after { display: none; }
+    .services { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* Public path draws once when scrolled into view (set by the script below) */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-draw='wait'] .pub .wire,
+    [data-draw='wait'] .pub-wire { transform: var(--draw); }
+    [data-draw='wait'] :is(.pub, .entry) .dot { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+    [data-draw='run'] .pub .wire,
+    [data-draw='run'] .pub-wire {
+      animation: draw 220ms var(--ease-out) both;
+      animation-delay: calc(var(--i) * 170ms - 110ms);
+    }
+    [data-draw='run'] :is(.pub, .entry) .dot {
+      animation: arrive 200ms var(--ease-out) both;
+      animation-delay: calc(var(--i) * 170ms);
+    }
+    @keyframes draw { from { transform: var(--draw); } }
+    @keyframes arrive {
+      from { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+      to { background: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    }
+  }
+</style>
+
+<script>
+  // Draw the public path once, the first time the diagram is on screen.
+  const boards = document.querySelectorAll<HTMLElement>('[data-diagram]');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (boards.length && !reduce && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        e.target.setAttribute('data-draw', 'run');
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.4 });
+    boards.forEach((b) => {
+      b.setAttribute('data-draw', 'wait');
+      io.observe(b);
+    });
+  }
+</script>

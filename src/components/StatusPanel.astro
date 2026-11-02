@@ -1,0 +1,345 @@
+---
+import { t, type Lang } from '../i18n/content';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const s = t[lang].status;
+const tr = t[lang].trace;
+
+// Strings the client script needs; everything else is rendered here.
+const clientCopy = {
+  states: s.states,
+  updated: s.updated,
+  lastReport: s.lastReport,
+  noReport: s.noReport,
+  sample: s.sample,
+  servicesValue: s.servicesValue,
+  timing: tr.timing,
+};
+const rows = [
+  { key: 'uptime', label: s.labels.uptime },
+  { key: 'temps', label: s.labels.temps },
+  { key: 'services', label: s.labels.services },
+  { key: 'backup', label: s.labels.backup },
+];
+---
+<section
+  id="estado"
+  class="panel"
+  aria-labelledby="status-title"
+  data-status
+  data-state="idle"
+  data-lang={lang}
+  data-copy={JSON.stringify(clientCopy)}
+>
+  <header class="panel-head">
+    <h2 id="status-title" class="panel-title">{s.title}</h2>
+    <p class="state">
+      <span class="led" aria-hidden="true"></span>
+      <span data-field="state" aria-live="polite">{s.states.idle}</span>
+    </p>
+  </header>
+  <p class="panel-sub num" data-field="updated"></p>
+
+  <dl class="metrics">
+    {rows.map((r) => (
+      <div class="metric">
+        <dt>{r.label}</dt>
+        <dd class="num" data-field={r.key}>—</dd>
+      </div>
+    ))}
+  </dl>
+  <noscript><p class="panel-note">{s.noscript}</p></noscript>
+
+  <div class="trace">
+    <h3 class="trace-title">{tr.caption}</h3>
+    <ol class="hops">
+      {tr.hops.map((h, i) => (
+        <li style={`--i:${i}`}>
+          <span class="hop-dot" aria-hidden="true"></span>
+          <span class="hop-name">{h.name}</span>
+          <span class="hop-note">{h.note}</span>
+        </li>
+      ))}
+    </ol>
+    <p class="timing num" data-field="timing"></p>
+  </div>
+</section>
+
+<script>
+  // Schema 2: aggregated data only. Missing or unknown fields are treated as null.
+  type Status = {
+    generatedAt: string;
+    sample?: boolean;
+    uptimeSeconds?: number | null;
+    cpu?: { tempC?: number | null } | null;
+    gpu?: { tempC?: number | null } | null;
+    services?: { running?: number | null } | null;
+    lastBackupAt?: string | null;
+  };
+  type Copy = {
+    states: Record<'idle' | 'ok' | 'stale' | 'offline', string>;
+    updated: string;
+    lastReport: string;
+    noReport: string;
+    sample: string;
+    servicesValue: string;
+    timing: string;
+  };
+
+  const STATUS_URL = '/status.json';
+  const STALE_AFTER_MS = 15 * 60 * 1000;
+  const REFRESH_MS = 60 * 1000;
+  const FETCH_TIMEOUT_MS = 8000;
+  const DASH = '—';
+  const METRICS = ['uptime', 'temps', 'services', 'backup'];
+
+  const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+  const parseTime = (v: unknown): number | null => {
+    if (typeof v !== 'string') return null;
+    const ms = Date.parse(v);
+    return Number.isFinite(ms) ? ms : null;
+  };
+  const isStatus = (v: unknown): v is Status =>
+    typeof v === 'object' && v !== null && parseTime((v as Status).generatedAt) !== null;
+
+  function initStatusPanel(panel: HTMLElement) {
+    const lang = panel.dataset.lang || 'es';
+    const copy = JSON.parse(panel.dataset.copy || '{}') as Copy;
+    const field = (name: string) => panel.querySelector<HTMLElement>(`[data-field="${name}"]`);
+    const set = (name: string, text: string) => {
+      const el = field(name);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+
+    const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' });
+    const int = new Intl.NumberFormat(lang, { maximumFractionDigits: 0 });
+
+    const relative = (ageMs: number) => {
+      const s = Math.max(0, ageMs) / 1000;
+      if (s < 45) return rtf.format(0, 'second');
+      if (s < 3600) return rtf.format(-Math.max(1, Math.floor(s / 60)), 'minute');
+      if (s < 86400) return rtf.format(-Math.floor(s / 3600), 'hour');
+      return rtf.format(-Math.floor(s / 86400), 'day');
+    };
+    const duration = (seconds: number) => {
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      if (d > 0) return `${d} d ${h} h`;
+      if (h > 0) return `${h} h ${m} min`;
+      return `${m} min`;
+    };
+    const temp = (v: unknown) => (isNum(v) ? `${int.format(v)} °C` : null);
+
+    let data: Status | null = null;
+    // generatedAt of the last good report, kept after a failed fetch for the sub-line.
+    let lastSeenMs: number | null = null;
+    // Sample data only renders in dev; its timestamps are shifted to "now" so the panel looks live.
+    let sampleShiftMs = 0;
+    let sampleBlocked = false;
+    let timer: number | undefined;
+
+    // Stale or missing data never shows old values: every metric falls back to a dash.
+    function renderNeutral(state: 'stale' | 'offline', sub: string) {
+      panel.dataset.state = state;
+      set('state', copy.states[state]);
+      set('updated', sub);
+      METRICS.forEach((k) => set(k, DASH));
+    }
+
+    function render() {
+      const now = Date.now();
+      if (!data) {
+        const sub = sampleBlocked
+          ? copy.noReport
+          : lastSeenMs !== null ? copy.lastReport.replace('{rel}', relative(now - lastSeenMs)) : '';
+        renderNeutral('offline', sub);
+        return;
+      }
+
+      const generated = (parseTime(data.generatedAt) as number) + sampleShiftMs;
+      const age = Math.max(0, now - generated);
+      if (age > STALE_AFTER_MS) {
+        renderNeutral('stale', copy.lastReport.replace('{rel}', relative(age)));
+        return;
+      }
+
+      panel.dataset.state = 'ok';
+      set('state', copy.states.ok);
+      const sub = copy.updated.replace('{rel}', relative(age));
+      set('updated', data.sample ? `${sub} · ${copy.sample}` : sub);
+
+      // Uptime is reported as of generatedAt; extrapolate to now while the report is fresh.
+      set('uptime', isNum(data.uptimeSeconds) ? duration(data.uptimeSeconds + age / 1000) : DASH);
+
+      const cpu = temp(data.cpu?.tempC);
+      const gpu = temp(data.gpu?.tempC);
+      set('temps', cpu || gpu ? `${cpu ?? DASH} · ${gpu ?? DASH}` : DASH);
+
+      const running = data.services?.running;
+      set('services', isNum(running) ? copy.servicesValue.replace('{n}', int.format(running)) : DASH);
+
+      const backupAt = parseTime(data.lastBackupAt);
+      set('backup', backupAt !== null ? relative(now - (backupAt + sampleShiftMs)) : DASH);
+    }
+
+    async function load() {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(STATUS_URL, { cache: 'no-store', signal: controller.signal, headers: { accept: 'application/json' } });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const json: unknown = await res.json();
+        if (!isStatus(json)) throw new Error('invalid status payload');
+        if (json.sample && !import.meta.env.DEV) {
+          data = null;
+          sampleBlocked = true;
+        } else {
+          data = json;
+          sampleBlocked = false;
+          sampleShiftMs = json.sample ? Date.now() - (parseTime(json.generatedAt) as number) : 0;
+          lastSeenMs = (parseTime(json.generatedAt) as number) + sampleShiftMs;
+        }
+      } catch {
+        // Unreachable server or bad payload: show no values rather than old ones.
+        data = null;
+        sampleBlocked = false;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+      render();
+    }
+
+    const stop = () => window.clearInterval(timer);
+    const start = () => {
+      stop();
+      timer = window.setInterval(load, REFRESH_MS);
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else { load(); start(); }
+    });
+    load();
+    start();
+
+    // Run the LED pulse only while the panel is on screen.
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([entry]) => {
+        panel.toggleAttribute('data-visible', entry.isIntersecting);
+      }).observe(panel);
+    } else {
+      panel.setAttribute('data-visible', '');
+    }
+
+    // Real round trip for this page load, from the Navigation Timing API.
+    const showTiming = () => {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      if (!nav || !nav.responseEnd) return;
+      const ms = Math.max(1, Math.round(nav.responseEnd - nav.requestStart));
+      set('timing', copy.timing.replace('{ms}', int.format(ms)));
+    };
+    if (document.readyState === 'complete') showTiming();
+    else window.addEventListener('load', showTiming, { once: true });
+  }
+
+  const panel = document.querySelector<HTMLElement>('[data-status]');
+  if (panel) initStatusPanel(panel);
+</script>
+
+<style>
+  /* Raised above the page, with a thin signal edge along the top like a lit bezel */
+  .panel {
+    background: var(--raised);
+    border-radius: 10px;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--signal) 55%, transparent),
+      0 0 0 1px var(--line),
+      0 18px 40px -24px color-mix(in srgb, var(--signal) 22%, transparent);
+    padding: clamp(1rem, 3vw, 1.5rem);
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    min-width: 0;
+  }
+
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap; }
+  .panel-title { font-size: 1rem; font-weight: 700; letter-spacing: 0; }
+  .state { display: inline-flex; align-items: center; gap: .5rem; color: var(--ink); font-weight: 600; }
+  .panel-sub { color: var(--muted); margin-top: .25rem; min-height: 1.6em; font-size: var(--step--2); }
+
+  /* Status LED */
+  .led {
+    position: relative; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--off); flex: none;
+    transition: background-color 300ms ease;
+  }
+  .led::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: var(--ok); opacity: 0;
+  }
+  [data-state='ok'] .led { background: var(--ok); }
+  /* Stale and offline stay neutral: no data is not a warning. */
+  [data-state='stale'] .led,
+  [data-state='offline'] .led { background: var(--off); }
+  [data-state='ok'][data-visible] .led::after { animation: pulse 2.4s var(--ease-out) infinite; }
+  @keyframes pulse {
+    0% { opacity: .55; transform: scale(1); }
+    70%, 100% { opacity: 0; transform: scale(2.6); }
+  }
+
+  .metrics { margin: 1rem 0 0; border-top: 1px solid var(--line); }
+  .metric {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    padding-block: .5rem; border-bottom: 1px solid var(--line);
+  }
+  .metric dt { color: var(--muted); flex: none; }
+  .metric dd { margin: 0; text-align: right; overflow-wrap: anywhere; transition: color 200ms ease; }
+  [data-state='stale'] .metric dd,
+  [data-state='offline'] .metric dd { color: var(--muted); }
+  .panel-note { margin-top: .75rem; color: var(--muted); }
+
+  /* Request trace */
+  .trace { margin-top: 1.5rem; }
+  .trace-title { font-size: var(--step--1); font-weight: 600; letter-spacing: 0; color: var(--ink); }
+  .hops { list-style: none; padding: 0; margin: .9rem 0 0; position: relative; display: grid; gap: .55rem; }
+  .hops::before,
+  .hops::after {
+    content: ''; position: absolute; left: 4px; top: .55em; bottom: .55em; width: 1px;
+  }
+  .hops::before { background: var(--line-strong); }
+  .hops::after {
+    background: var(--info); transform-origin: top;
+    animation: travel 900ms var(--ease-in-out) 200ms both;
+  }
+  .hops li {
+    display: grid; grid-template-columns: 9px minmax(0, 9.5rem) minmax(0, 1fr);
+    column-gap: .85rem; align-items: baseline; position: relative;
+  }
+  .hop-dot {
+    width: 9px; height: 9px; border-radius: 50%; position: relative; z-index: 1;
+    background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-strong);
+    align-self: center;
+    animation: hop-arrive 200ms var(--ease-out) both;
+    animation-delay: calc(200ms + var(--i) * 190ms);
+  }
+  .hop-name { color: var(--ink); font-weight: 600; }
+  .hop-note { color: var(--muted); font-family: var(--sans); font-size: var(--step--1); line-height: 1.4; }
+  .timing { margin-top: 1rem; min-height: 1.6em; color: var(--accent); font-weight: 600; }
+
+  @keyframes travel { from { transform: scaleY(0); } }
+  @keyframes hop-arrive {
+    from { background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-strong); }
+    to { background: var(--info); box-shadow: inset 0 0 0 1px var(--info); }
+  }
+
+  @media (max-width: 420px) {
+    .hops li { grid-template-columns: 9px minmax(0, 1fr); }
+    .hop-note { grid-column: 2; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hops::after { animation: none; }
+    .hop-dot { animation: none; background: var(--info); box-shadow: inset 0 0 0 1px var(--info); }
+    [data-state='ok'][data-visible] .led::after { animation: none; }
+  }
+</style>

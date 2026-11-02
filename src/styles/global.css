@@ -1,51 +1,85 @@
 @import '@fontsource-variable/schibsted-grotesk';
 @import '@fontsource-variable/jetbrains-mono';
 
+/*
+  Visual system: an operator's console, kept quiet.
+  Petrol-slate neutrals (a cool blue-teal cast), one "signal" accent
+  (chartreuse, the colour of a healthy status LED), a cool cyan "info" for
+  secondary wayfinding and private paths, and amber reserved for degraded
+  states. Three hues, never more.
+  JetBrains Mono carries the voice and every number; Schibsted Grotesk carries
+  long-form reading.
+*/
 :root {
-  --bg: #eef1f4;
-  --surface: #e3e8ee;
-  --ink: #18212e;
-  --muted: #586374;
-  --line: #c9d1db;
-  --accent: #0e5f7c;      /* azul mediterráneo */
-  --accent-ink: #ffffff;
-  --stone: #b08433;       /* piedra de Melilla la Vieja */
-  --stone-ink: #82601f;
-  --focus: #b08433;
+  --bg: #f0f4f4;
+  --surface: #e3eaeb;
+  --raised: #f9fbfb;          /* elevated panels (status) */
+  --ink: #0f1b1e;
+  --muted: #4a5c60;
+  --line: #cfdbdc;
+  --line-strong: #a9b9bc;
+
+  --signal: #c5f031;          /* LED / highlight fill */
+  --accent: #436000;          /* accent as text on light ground */
+  --info: #0b6573;            /* secondary colour: labels, private path, trace */
+  --glow: rgb(11 101 115 / 0.12);
+  --btn-bg: #0f1b1e;
+  --btn-fg: #c5f031;
+
+  --ok: #4a8a00;
+  --warn: #a86400;
+  --off: #768689;
+  --focus: #436000;
+  --selection: #c5f031;
+  --selection-ink: #0f1b1e;
 
   --sans: 'Schibsted Grotesk Variable', system-ui, sans-serif;
-  --mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
+  --step--2: 0.8125rem;
   --step--1: 0.875rem;
   --step-0: 1.0625rem;
-  --step-1: 1.3125rem;
-  --step-2: 1.75rem;
-  --step-3: clamp(2.25rem, 6vw, 4.25rem);
+  --step-1: 1.25rem;
+  --step-2: clamp(1.5rem, 3.2vw, 2rem);
+  --step-3: clamp(2.5rem, 7.5vw, 5rem);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   --measure: 66ch;
   --gutter: 16px;
+  --radius: 6px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11171f;
-    --surface: #18212c;
-    --ink: #e5eaf0;
-    --muted: #97a3b3;
-    --line: #2a3644;
-    --accent: #5fb2cf;
-    --accent-ink: #0b1218;
-    --stone: #d2a656;
-    --stone-ink: #d2a656;
-    --focus: #d2a656;
+    --bg: #0c171b;
+    --surface: #122229;
+    --raised: #172b33;
+    --ink: #e3edef;
+    --muted: #94aab0;
+    --line: #213840;
+    --line-strong: #34515b;
+
+    --signal: #c5f031;
+    --accent: #c5f031;
+    --info: #62d2e3;
+    --glow: rgb(98 210 227 / 0.24);
+    --btn-bg: #c5f031;
+    --btn-fg: #0c171b;
+
+    --ok: #c5f031;
+    --warn: #f0b03c;
+    --off: #66808a;
+    --focus: #c5f031;
     color-scheme: dark;
   }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scrollbar-color: var(--line-strong) var(--bg); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 body {
@@ -55,17 +89,75 @@ body {
   font-family: var(--sans);
   font-size: var(--step-0);
   line-height: 1.6;
-  font-feature-settings: 'ss01';
+  caret-color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: clip;
 }
 
-a { color: inherit; text-decoration-color: var(--accent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
-a:hover { color: var(--accent); }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+::selection { background: var(--selection); color: var(--selection-ink); }
 
-h1, h2, h3 { line-height: 1.1; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
-p { margin: 0; }
+a {
+  color: inherit;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) and (pointer: fine) {
+  a:hover { color: var(--info); }
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
 
-.wrap { width: min(100% - 2 * var(--gutter), 1080px); margin-inline: auto; }
+h1, h2, h3 {
+  font-family: var(--mono);
+  line-height: 1.15;
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+p { margin: 0; text-wrap: pretty; }
+
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+.wrap { width: min(100% - 2 * var(--gutter), 1120px); margin-inline: auto; }
 
 .skip { position: absolute; left: -999px; }
 .skip:focus { left: var(--gutter); top: var(--gutter); background: var(--ink); color: var(--bg); padding: .5rem .75rem; z-index: 10; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Section heading: mono title followed by a rule that runs to the edge */
+.section-title {
+  display: flex; align-items: baseline; gap: 1rem;
+  font-size: var(--step-2);
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; transform: translateY(-0.3em);
+  /* The rule starts as a short info-coloured lead, then fades to a quiet line */
+  background: linear-gradient(to right, var(--info) 0 2.5rem, var(--line) 2.5rem);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  min-height: 44px; padding: .55rem 1rem;
+  border-radius: var(--radius); border: 1px solid var(--line-strong);
+  font-family: var(--mono); font-size: var(--step--1); font-weight: 600;
+  text-decoration: none; color: var(--ink); background: transparent;
+  transition: transform 160ms var(--ease-out), background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-fg); }
+.btn.quiet { border-color: transparent; padding-inline: .5rem; color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { border-color: var(--ink); color: var(--ink); }
+  .btn.primary:hover { color: var(--btn-fg); filter: brightness(1.08); }
+  .btn.quiet:hover { color: var(--ink); border-color: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active { transform: none; }
+}

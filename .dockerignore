@@ -2,3 +2,5 @@ node_modules
 dist
 .astro
 .git
+# Mock de desarrollo: en producción /status.json lo sirve Caddy desde /srv-status
+public/status.json

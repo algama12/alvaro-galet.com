@@ -1,0 +1,137 @@
+---
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import HomelabDiagram from './HomelabDiagram.astro';
+import type { HomelabDiagram as Diagram } from '../i18n/content';
+
+interface Props {
+  slug: string;
+  name: string;
+  url?: string;
+  media?: { alt: string; width: number; height: number };
+  diagram?: Diagram;
+  pendingLabel: string;
+}
+const { slug, name, url, media, diagram, pendingLabel } = Astro.props;
+
+// Checked at build time, so a missing file never breaks the build: it just renders the placeholder.
+const publicDir = join(process.cwd(), 'public');
+const has = (file: string) => existsSync(join(publicDir, 'projects', file));
+const image = media && has(`${slug}.webp`) ? `/projects/${slug}.webp` : null;
+const video = media && has(`${slug}.mp4`) ? `/projects/${slug}.mp4` : null;
+const host = url ? url.replace(/^https?:\/\//, '').replace(/\/$/, '') : slug;
+const width = media?.width ?? 1600;
+const height = media?.height ?? 1000;
+const Frame = url ? 'a' : 'div';
+---
+<Frame
+  class="frame"
+  {...(url ? { href: url, tabindex: -1 } : {})}
+  style={`--ratio:${width} / ${height}`}
+>
+  <div class="chrome" aria-hidden="true">
+    <span class="chrome-bar"></span>
+    <span class="chrome-url">{host}</span>
+  </div>
+  <div class:list={['viewport', { 'is-diagram': diagram }]}>
+    {diagram ? (
+      <HomelabDiagram diagram={diagram} />
+    ) : video ? (
+      <video
+        class="shot"
+        src={video}
+        poster={image ?? undefined}
+        width={width}
+        height={height}
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-label={media!.alt}
+        data-autoplay
+      ></video>
+    ) : image ? (
+      <img class="shot" src={image} alt={media!.alt} width={width} height={height} loading="lazy" decoding="async" />
+    ) : (
+      <div class="pending" role="img" aria-label={`${name} · ${pendingLabel}`}>
+        <span class="pending-name">{name}</span>
+        <span class="pending-note"><span class="pending-dot" aria-hidden="true"></span>{pendingLabel}</span>
+      </div>
+    )}
+  </div>
+</Frame>
+
+<style>
+  .frame {
+    display: block; text-decoration: none; color: inherit;
+    border-radius: 10px; overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .chrome {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .55rem .75rem; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: var(--step--2); color: var(--muted);
+  }
+  .chrome-bar {
+    width: 2.25rem; height: 6px; border-radius: 3px; background: var(--line); flex: none;
+  }
+  .chrome-url {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: .15rem .6rem; border-radius: 4px; background: var(--bg);
+  }
+  .viewport { aspect-ratio: var(--ratio); overflow: hidden; background: var(--bg); }
+  /* Same ratio as the screenshots, but grows instead of clipping when the diagram needs more room */
+  .viewport.is-diagram { display: grid; overflow: visible; }
+  .shot {
+    display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center;
+    transition: transform 400ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    a.frame:hover .shot { transform: scale(1.015); }
+  }
+
+  /* Placeholder until the real screenshot lands in public/projects/ */
+  .pending {
+    height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+    gap: .6rem; padding: clamp(1.25rem, 5%, 2.5rem);
+    background:
+      linear-gradient(var(--line), var(--line)) left 0 top 33% / 100% 1px no-repeat,
+      linear-gradient(var(--line), var(--line)) left 0 top 66% / 100% 1px no-repeat;
+  }
+  .pending-name {
+    font-family: var(--mono); font-weight: 650; letter-spacing: -0.02em;
+    font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.05; color: var(--ink);
+    background: var(--bg); padding-right: .5rem;
+  }
+  .pending-note {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-family: var(--mono); font-size: var(--step--2); color: var(--muted);
+    background: var(--bg); padding-right: .5rem;
+  }
+  .pending-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shot { transition: none; }
+  }
+</style>
+
+<script>
+  // Autoplay preview clips only on screen and never under reduced motion.
+  const clips = document.querySelectorAll<HTMLVideoElement>('video[data-autoplay]');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (clips.length) {
+    if (reduce || !('IntersectionObserver' in window)) {
+      clips.forEach((v) => { v.controls = true; });
+    } else {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          const v = e.target as HTMLVideoElement;
+          if (e.isIntersecting) v.play().catch(() => { v.controls = true; });
+          else v.pause();
+        });
+      }, { threshold: 0.25 });
+      clips.forEach((v) => io.observe(v));
+    }
+  }
+</script>

@@ -1,18 +1,22 @@
 ---
 import Base from '../layouts/Base.astro';
-import { t, links, altPath, cvPath, type Lang } from '../i18n/content';
+import StatusPanel from './StatusPanel.astro';
+import Projects from './Projects.astro';
+import Experience from './Experience.astro';
+import { t, links, altPath, cvPath, homePath, type Lang } from '../i18n/content';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const d = t[lang];
 const other: Lang = lang === 'es' ? 'en' : 'es';
+const buildDate = new Date().toISOString().slice(0, 10);
 ---
 <Base lang={lang}>
-  <a class="skip" href="#main">{lang === 'es' ? 'Saltar al contenido' : 'Skip to content'}</a>
+  <a class="skip" href="#main">{d.a11y.skip}</a>
 
   <header class="top wrap">
-    <a class="brand" href={lang === 'es' ? '/' : '/en/'}>Álvaro Galet</a>
-    <nav aria-label={lang === 'es' ? 'Principal' : 'Main'}>
+    <a class="brand" href={homePath(lang)}>Álvaro Galet</a>
+    <nav aria-label={d.a11y.mainNav}>
       <a href="#proyectos">{d.nav.projects}</a>
       <a href="#experiencia">{d.nav.experience}</a>
       <a href="#contacto">{d.nav.contact}</a>
@@ -24,103 +28,30 @@ const other: Lang = lang === 'es' ? 'en' : 'es';
   </header>
 
   <main id="main">
-    <section class="hero wrap">
-      <h1>Álvaro Galet</h1>
-      <p class="role">{d.hero.role}</p>
-      <p class="intro">{d.hero.intro}</p>
-      <p class="where">{d.hero.location}</p>
-      <div class="actions">
-        <a class="btn primary" href={`mailto:${links.email}`}>{d.hero.ctaMail}</a>
-        <a class="btn" href={cvPath(lang)} download>{d.hero.cv}</a>
-        <a class="btn ghost" href={links.github} rel="me">GitHub</a>
-        <a class="btn ghost" href={links.linkedin} rel="me">LinkedIn</a>
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="intro">
+        <h1 id="hero-title">Álvaro Galet</h1>
+        <p class="role">{d.hero.role}</p>
+        <p class="pitch">{d.hero.intro}</p>
+        <p class="where">{d.hero.location}</p>
+        <div class="actions">
+          <a class="btn primary" href={`mailto:${links.email}`}>{d.hero.ctaMail}</a>
+          <a class="btn" href={cvPath(lang)} download>{d.hero.cv}</a>
+          <a class="btn quiet" href={links.github} rel="me">GitHub</a>
+          <a class="btn quiet" href={links.linkedin} rel="me">LinkedIn</a>
+        </div>
+      </div>
+      <div class="live">
+        <StatusPanel lang={lang} />
+        <p class="live-foot">{d.trace.footnote}</p>
       </div>
     </section>
 
-    <section class="trace wrap" aria-labelledby="trace-title">
-      <h2 id="trace-title" class="trace-caption">{d.trace.caption}</h2>
-      <ol class="hops">
-        {d.trace.hops.map((h, i) => (
-          <li style={`--i:${i}`}>
-            <span class="dot" aria-hidden="true"></span>
-            <span class="hop-name">{h.name}</span>
-            <span class="hop-note">{h.note}</span>
-          </li>
-        ))}
-      </ol>
-      <p class="timing" data-timing={d.trace.timing} aria-live="polite"></p>
-      <p class="trace-foot">{d.trace.footnote}</p>
-    </section>
-
-    <section id="proyectos" class="block wrap" aria-labelledby="p-title">
-      <div class="block-head">
-        <h2 id="p-title">{d.projects.title}</h2>
-        <p>{d.projects.lead}</p>
-      </div>
-      <ul class="projects">
-        {d.projects.items.map((p) => (
-          <li class="project">
-            <div class="p-head">
-              <h3>{p.name}</h3>
-              <span class="year">{p.year}</span>
-            </div>
-            <div class="p-body">
-              <p class="summary">{p.summary}</p>
-              <p class="detail">{p.detail}</p>
-              <p class="tech">{p.stack.join(', ')}</p>
-              {(p.url || p.repo) && (
-                <p class="p-links">
-                  {p.url && <a href={p.url}>{d.projects.visit} <span class="host">{p.url.replace('https://', '')}</span></a>}
-                  {p.repo && <a href={p.repo}>{d.projects.code}</a>}
-                </p>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-
-    <section id="experiencia" class="block wrap" aria-labelledby="e-title">
-      <div class="block-head">
-        <h2 id="e-title">{d.experience.title}</h2>
-      </div>
-      <ol class="timeline">
-        {d.experience.roles.map((r) => (
-          <li>
-            <span class="period">{r.period}</span>
-            <div>
-              <h3>{r.title} <span class="org">· {r.org}</span></h3>
-              <p>{r.text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <h3 class="sub">{d.experience.studiesTitle}</h3>
-      <ol class="timeline compact">
-        {d.experience.studies.map((r) => (
-          <li>
-            <span class="period">{r.period}</span>
-            <div>
-              <p class="study">{r.title}{r.org && <span class="org"> · {r.org}</span>}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <h3 class="sub">{d.stack.title}</h3>
-      <dl class="stack">
-        {d.stack.groups.map((g) => (
-          <div>
-            <dt>{g.label}</dt>
-            <dd>{g.items}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <Projects lang={lang} />
+    <Experience lang={lang} />
 
     <section id="contacto" class="contact wrap" aria-labelledby="c-title">
-      <h2 id="c-title">{d.contact.title}</h2>
+      <h2 id="c-title" class="section-title">{d.contact.title}</h2>
       <p>{d.contact.text}</p>
       <a class="mail" href={`mailto:${links.email}`}>{links.email}</a>
     </section>
@@ -128,173 +59,72 @@ const other: Lang = lang === 'es' ? 'en' : 'es';
 
   <footer class="foot wrap">
     <p>© {new Date().getFullYear()} Álvaro Galet Martín. {d.footer}</p>
+    <p class="build num">{d.build.replace('{date}', buildDate)}</p>
   </footer>
 </Base>
 
 <script>
-  // Recuerda el idioma elegido (solo como comodidad; la web funciona sin ello)
+  // Remember the chosen language (convenience only; the site works without it).
   document.querySelectorAll<HTMLAnchorElement>('[data-lang-switch]').forEach((a) => {
     a.addEventListener('click', () => {
       try { localStorage.setItem('lang', a.dataset.langSwitch!); } catch {}
     });
   });
-
-  // Tiempo real de respuesta de esta petición
-  const el = document.querySelector<HTMLElement>('.timing');
-  const show = () => {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-    if (!el || !nav || !nav.responseEnd) return;
-    const ms = Math.max(1, Math.round(nav.responseEnd - nav.requestStart));
-    el.textContent = (el.dataset.timing || '').replace('{ms}', String(ms));
-  };
-  if (document.readyState === 'complete') show();
-  else addEventListener('load', show);
 </script>
 
 <style>
   .top {
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem 1.5rem;
     padding-block: 1.25rem; flex-wrap: wrap;
   }
-  .brand { font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
-  nav { display: flex; align-items: center; gap: 1.25rem; font-size: var(--step--1); flex-wrap: wrap; }
-  nav a { text-decoration: none; color: var(--muted); }
-  nav a:hover { color: var(--ink); }
+  .brand { font-family: var(--mono); font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
+  nav { display: flex; align-items: center; gap: .25rem 1.25rem; font-family: var(--mono); font-size: var(--step--1); flex-wrap: wrap; }
+  nav a { text-decoration: none; color: var(--muted); padding-block: .5rem; transition: color 150ms ease; }
+  @media (hover: hover) and (pointer: fine) {
+    nav a:hover { color: var(--ink); }
+  }
   .lang {
-    display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden;
-    font-weight: 600; font-size: 0.8125rem;
+    display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden;
+    font-weight: 600; font-size: var(--step--2); padding: 0 !important;
   }
-  .lang span { padding: .2rem .6rem; color: var(--muted); }
+  .lang span { padding: .3rem .55rem; color: var(--muted); }
   .lang span.on { background: var(--ink); color: var(--bg); }
-  .lang:hover { border-color: var(--accent); }
 
-  /* Hero */
-  .hero { padding-block: clamp(3rem, 10vw, 7rem) 2.5rem; }
-  .hero h1 { font-size: var(--step-3); font-weight: 800; letter-spacing: -0.04em; line-height: 0.95; }
-  .role { font-size: var(--step-1); color: var(--accent); font-weight: 600; margin-top: .75rem; }
-  .intro { max-width: 58ch; margin-top: 1.5rem; font-size: 1.1875rem; line-height: 1.55; }
-  .where { color: var(--muted); margin-top: 1rem; font-size: var(--step--1); }
-  .actions { display: flex; flex-wrap: wrap; gap: .625rem; margin-top: 2rem; }
-  .btn {
-    display: inline-block; padding: .65rem 1.05rem; border-radius: 8px; text-decoration: none;
-    font-weight: 600; font-size: .9375rem; border: 1.5px solid var(--ink); color: var(--ink);
+  /* Hero: who, plus the live machine that serves the page */
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 3rem clamp(2rem, 5vw, 4.5rem); align-items: start;
+    padding-block: clamp(2.5rem, 8vw, 6rem) 0;
   }
-  .btn:hover { color: var(--accent); border-color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .btn.primary:hover { filter: brightness(1.08); color: var(--accent-ink); }
-  .btn.ghost { border-color: transparent; padding-inline: .6rem; }
+  .hero h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: -0.04em; line-height: 0.95; }
+  .role { font-family: var(--mono); font-size: var(--step-1); color: var(--muted); margin-top: 1rem; }
+  .pitch { max-width: 56ch; margin-top: 1.75rem; font-size: 1.1875rem; line-height: 1.55; }
+  .where { font-family: var(--mono); color: var(--muted); margin-top: 1.25rem; font-size: var(--step--1); }
+  .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 2rem; }
+  /* A soft pool of cool light behind the live panel; sits under all content */
+  .live { min-width: 0; position: relative; isolation: isolate; }
+  .live::before {
+    content: ''; position: absolute; inset: -35% -40% -25%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, var(--glow), transparent);
+  }
+  .live-foot { margin-top: .9rem; color: var(--muted); font-size: var(--step--1); line-height: 1.5; max-width: 60ch; }
 
-  /* La traza: el elemento con personalidad de la página */
-  .trace {
-    background: var(--surface); border-radius: 14px;
-    padding: clamp(1.25rem, 4vw, 2.25rem); margin-block: 1rem 5rem;
-  }
-  .trace-caption { font-size: var(--step--1); font-weight: 600; color: var(--muted); letter-spacing: 0; }
-  .hops {
-    list-style: none; padding: 0; margin: 1.5rem 0 0;
-    display: grid; grid-template-columns: repeat(5, 1fr); position: relative;
-  }
-  .hops::before {
-    content: ''; position: absolute; left: 6px; width: 80%; top: 6px; height: 2px;
-    background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 11px);
-  }
-  .hops::after {
-    content: ''; position: absolute; left: 6px; top: 6px; height: 2px;
-    background: var(--accent); transform-origin: left; transform: scaleX(1); width: 80%;
-    animation: travel 1.6s cubic-bezier(.6, 0, .2, 1) .3s both;
-  }
-  .hops li { position: relative; display: flex; flex-direction: column; gap: .2rem; padding-right: .75rem; }
-  .dot {
-    width: 14px; height: 14px; border-radius: 50%; background: var(--bg);
-    border: 2px solid var(--accent); position: relative; z-index: 1; margin-bottom: .75rem;
-    animation: arrive .3s ease-out both; animation-delay: calc(.3s + var(--i) * .38s);
-  }
-  .hops li:last-child .dot { background: var(--stone); border-color: var(--stone); }
-  .hop-name { font-family: var(--mono); font-size: .875rem; font-weight: 600; }
-  .hop-note { font-size: .875rem; color: var(--muted); line-height: 1.4; }
-  .timing { font-family: var(--mono); font-size: .8125rem; color: var(--stone-ink); margin-top: 1.5rem; min-height: 1.3em; }
-  .trace-foot { margin-top: .5rem; max-width: 70ch; color: var(--muted); font-size: .9375rem; }
-
-  @keyframes travel { from { transform: scaleX(0); } }
-  @keyframes arrive { from { background: var(--bg); transform: scale(.6); } to { background: var(--accent); transform: scale(1); } }
-  .hops li:last-child .dot { animation-name: arrive-last; }
-  @keyframes arrive-last { from { background: var(--bg); transform: scale(.6); } to { background: var(--stone); transform: scale(1); } }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hops::after, .dot { animation: none; }
-    .dot { background: var(--accent); }
-  }
-
-  @media (max-width: 720px) {
-    .hops { grid-template-columns: 1fr; gap: 1.1rem; }
-    .hops::before, .hops::after {
-      left: 6px; top: 8px; bottom: 2.6rem; right: auto; width: 2px; height: auto;
-    }
-    .hops::before { background: repeating-linear-gradient(180deg, var(--line) 0 6px, transparent 6px 11px); }
-    .hops::after { transform-origin: top; animation-name: travel-v; }
-    .hops li { display: grid; grid-template-columns: 14px 1fr; column-gap: 1rem; padding: 0; }
-    .dot { margin: .2rem 0 0; grid-row: span 2; }
-  }
-  @keyframes travel-v { from { transform: scaleY(0); } }
-
-  /* Secciones */
-  .block { padding-block: 1rem 4.5rem; }
-  .block-head { display: flex; align-items: baseline; gap: 1rem 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
-  .block-head h2, .contact h2 { font-size: var(--step-2); }
-  .block-head p { color: var(--muted); }
-
-  .projects { list-style: none; padding: 0; margin: 0; }
-  .project {
-    display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: .75rem 2.5rem;
-    padding-block: 1.75rem; border-top: 1.5px solid var(--line);
-  }
-  .p-head h3 { font-size: var(--step-1); }
-  .year { display: block; color: var(--muted); font-size: var(--step--1); margin-top: .35rem; }
-  .p-body { max-width: var(--measure); }
-  .summary { font-weight: 600; }
-  .detail { margin-top: .4rem; color: var(--ink); }
-  .tech { margin-top: .75rem; color: var(--muted); font-size: var(--step--1); }
-  .p-links { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: .75rem; font-weight: 600; font-size: .9375rem; }
-  .host { font-weight: 400; color: var(--muted); }
-
-  .timeline { list-style: none; padding: 0; margin: 0; }
-  .timeline li {
-    display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: .25rem 2rem;
-    padding-block: 1.1rem; border-left: 2px solid var(--line); padding-left: 1.25rem; position: relative;
-  }
-  .timeline li::before {
-    content: ''; position: absolute; left: -6px; top: 1.45rem; width: 10px; height: 10px;
-    border-radius: 50%; background: var(--bg); border: 2px solid var(--accent);
-  }
-  .timeline li:first-child::before { background: var(--accent); }
-  .period { color: var(--muted); font-size: var(--step--1); padding-top: .2rem; font-variant-numeric: tabular-nums; }
-  .timeline h3 { font-size: 1.125rem; }
-  .timeline p { margin-top: .35rem; max-width: var(--measure); }
-  .org { font-weight: 400; color: var(--muted); }
-  .compact li { padding-block: .6rem; }
-  .compact li::before { top: .95rem; }
-  .timeline .study { margin: 0; font-weight: 600; }
-  .sub { font-size: var(--step-1); margin: 3rem 0 1.25rem; }
-
-  .stack { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem 2.5rem; max-width: 52rem; }
-  .stack dt { font-weight: 700; }
-  .stack dd { margin: .2rem 0 0; color: var(--muted); }
-
-  .contact {
-    padding-block: 3.5rem; margin-bottom: 2rem; border-top: 1.5px solid var(--line);
-  }
-  .contact p { margin-top: .75rem; max-width: 52ch; color: var(--muted); }
+  .contact { padding-block: clamp(4.5rem, 10vw, 8rem) clamp(3rem, 6vw, 4.5rem); }
+  .contact p { margin-top: 1.25rem; max-width: 52ch; color: var(--muted); }
   .mail {
-    display: inline-block; margin-top: 1.25rem; font-size: clamp(1.25rem, 4.2vw, 2.25rem);
-    font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere;
+    display: inline-block; margin-top: 1.25rem; font-family: var(--mono);
+    font-size: clamp(1.125rem, 4.4vw, 2.5rem); font-weight: 650; letter-spacing: -0.03em;
+    overflow-wrap: anywhere; text-decoration-thickness: 2px; text-underline-offset: 6px;
   }
 
-  .foot { padding-block: 2rem 3rem; color: var(--muted); font-size: var(--step--1); }
+  .foot {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 2rem;
+    padding-block: 1.5rem 3rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: var(--step--1);
+  }
+  .build { font-family: var(--mono); font-size: var(--step--2); }
 
-  @media (max-width: 720px) {
-    .project { grid-template-columns: 1fr; }
-    .timeline li { grid-template-columns: 1fr; }
-    .stack { grid-template-columns: 1fr; }
-    nav { gap: .9rem; }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: minmax(0, 1fr); }
   }
 </style>

@@ -2,3 +2,12 @@ node_modules
 dist
 .astro
 .DS_Store
+.claude
+.agents
+
+# Local AI tooling (skills, hooks, registries)
+.atl
+.codex
+skills-lock.json
+.playwright-mcp
+.playwright-cli
